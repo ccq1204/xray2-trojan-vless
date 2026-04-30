@@ -106,23 +106,24 @@ cat <<EOF > /etc/xray2/config.json
 EOF
 
 # --- [ 6. 维护工具 x2 生成 ] ---
-cat <<EOF > /usr/bin/x2
+cat <<'EOF' > /usr/bin/x2
 #!/bin/bash
-case "\$1" in
+GREEN="\033[32m"
+YELLOW="\033[33m"
+RED="\033[31m"
+PLAIN="\033[0m"
+case "$1" in
     log) journalctl -u xray2 -f ;;
-    update)
-        wget -q -O /etc/xray2/sing_origin.json $RAW_BASE/sing_origin.json
-        systemctl restart xray2 && echo "配置已静默更新" ;;
-    restart) systemctl restart xray2 && echo "重启成功" ;;
-    stop) systemctl stop xray2 && echo "已停止" ;;
-    start) systemctl start xray2 && echo "已启动" ;;
+    restart) systemctl restart xray2 && echo -e "${GREEN}重启成功${PLAIN}" ;;
+    stop) systemctl stop xray2 && echo -e "${YELLOW}服务已停止${PLAIN}" ;;
+    start) systemctl start xray2 && echo -e "${GREEN}服务已启动${PLAIN}" ;;
     status) systemctl status xray2 ;;
     uninstall) 
         systemctl stop xray2
         systemctl disable xray2
         rm -rf /usr/local/xray2 /etc/xray2 /usr/bin/x2 /etc/systemd/system/xray2.service
-        echo "已彻底卸载" ;;
-    *) echo "使用方法: x2 {log|update|restart|stop|start|status|uninstall}" ;;
+        echo -e "${RED}已彻底卸载系统${PLAIN}" ;;
+    *) echo "使用方法: x2 {log|restart|stop|start|status|uninstall}" ;;
 esac
 EOF
 chmod +x /usr/bin/x2
@@ -144,35 +145,34 @@ EOF
 systemctl daemon-reload && systemctl enable xray2 && systemctl restart xray2
 
 # --- [ 8. 智能检测与结果面板 ] ---
-echo -e "${YELLOW}正在检测节点运行状态，请稍候...${PLAIN}"
-sleep 3  # 给内核一点启动时间
-
-PID=$(ps -ef | grep xray2_core | grep -v grep | awk '{print $2}')
+echo -e "${YELLOW}正在检测节点运行状态...${PLAIN}"
+sleep 3
+# 获取PID的修正逻辑
+CORE_PID=$(ps -ef | grep xray2_core | grep -v grep | awk '{print $2}')
 
 clear
 echo -e "${GREEN}======================================================${PLAIN}"
-echo -e "✅ $BRAND_NAME 部署成功！"
+echo -e "✅ $BRAND_NAME 部署成功！       作者：${YELLOW}$AUTHOR${PLAIN}"
 echo -e "${BLUE}------------------------------------------------------${PLAIN}"
 echo -e "  极昼官网: ${YELLOW}$AD_URL${PLAIN}"
 echo -e "  交流群组: ${YELLOW}$AD_TG_GROUP${PLAIN}"
-echo -e "  联系作者: ${YELLOW}$AUTHOR${PLAIN}"
 echo -e "${BLUE}------------------------------------------------------${PLAIN}"
 
 # 核心状态判定
-if [ -n "$PID" ]; then
-    echo -e "运行状态: ${GREEN}🚀 启动成功 [PID: $PID]${PLAIN}"
+if [ -n "$CORE_PID" ]; then
+    echo -e "运行状态: ${GREEN}🚀 启动成功 [PID: $CORE_PID]${PLAIN}"
 else
     echo -e "运行状态: ${RED}❌ 启动失败${PLAIN}"
-    echo -e "${YELLOW}原因分析: 请检查域名证书是否已放置在 /etc/xray2/ 目录下${PLAIN}"
+    echo -e "${YELLOW}温馨提示: 请手动放置证书至 /etc/xray2/fullchain.cer${PLAIN}"
 fi
 
 echo -e "当前协议: ${YELLOW}$NODE_TYPE${PLAIN} | 节点ID: ${YELLOW}$C_ID${PLAIN}"
 echo -e "------------------------------------------------------"
-echo -e "${YELLOW}管理指令：${PLAIN}"
-echo -e "  查看日志: ${GREEN}x2 log${PLAIN}"
-echo -e "  重启服务: ${GREEN}x2 restart${PLAIN}"
-echo -e "  静默升级: ${GREEN}x2 update${PLAIN}"
-echo -e "  卸载系统: ${GREEN}x2 uninstall${PLAIN}"
+echo -e "${YELLOW}管理指令 (快捷键 x2)：${PLAIN}"
+echo -e "  ${GREEN}查看日志: x2 log${PLAIN}"
+echo -e "  ${GREEN}重启服务: x2 restart${PLAIN}"
+echo -e "  ${GREEN}停止服务: x2 stop${PLAIN}"
+echo -e "  ${GREEN}卸载系统: x2 uninstall${PLAIN}"
 echo -e "------------------------------------------------------"
 echo -e "证书路径: /etc/xray2/fullchain.cer 和 cert.key"
 echo -e "${GREEN}======================================================${PLAIN}"
