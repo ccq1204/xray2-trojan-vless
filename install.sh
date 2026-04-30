@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# --- [ 1. 品牌与广告配置 ] ---
-AUTHOR="极昼"
+# --- [ 1. 品牌与链接配置 ] ---
+AUTHOR="@ccq1204"
 BRAND_NAME="xray2-Multi"
-AD_URL="0000.7788.gg"
-AD_TG="@jzllzf"
-AD_MSG="商业合作请联系 Telegram: $AD_TG"
+AD_URL="jizhou.feiwang.shop"
+AD_TG_GROUP="https://t.me/jzllzf"
+AD_MSG="商业合作请联系作者 TG: $AUTHOR"
 
 RAW_BASE="https://raw.githubusercontent.com/ccq1204/xray2-trojan-vless/main"
 AUTH_DB="$RAW_BASE/auth_md5.txt"
@@ -22,7 +22,8 @@ echo -e "${BLUE}======================================================${PLAIN}"
 echo -e "${GREEN}          $BRAND_NAME 商业版高性能转发系统${PLAIN}"
 echo -e "          作者：${YELLOW}$AUTHOR${PLAIN}"
 echo -e "${BLUE}======================================================${PLAIN}"
-echo -e "  极昼官网: ${YELLOW}$AD_URL${PLAIN} | 频道: ${YELLOW}$AD_TG${PLAIN}"
+echo -e "  极昼官网: ${YELLOW}$AD_URL${PLAIN}"
+echo -e "  交流群组: ${YELLOW}$AD_TG_GROUP${PLAIN}"
 echo -e "  ${RED}$AD_MSG${PLAIN}"
 echo -e "${BLUE}------------------------------------------------------${PLAIN}"
 
@@ -56,7 +57,7 @@ read -p "面板密钥(ApiKey): " C_KEY
 read -p "节点ID(NodeID): " C_ID
 read -p "解析域名(CertDomain): " C_DOMAIN
 
-# --- [ 4. 环境准备与资源同步 ] ---
+# --- [ 4. 环境与资源同步 ] ---
 mkdir -p /etc/xray2
 mkdir -p /usr/local/xray2
 apt-get update -y && apt-get install -y curl wget tar unzip psmisc e2fsprogs
@@ -73,8 +74,7 @@ unzip -o /usr/local/xray2/core.zip -d /usr/local/xray2
 mv /usr/local/xray2/V2bX /usr/local/xray2/xray2_core
 chmod +x /usr/local/xray2/xray2_core
 
-# --- [ 5. 动态生成标准的 config.json ] ---
-# 强制解锁文件防止 Operation not permitted
+# --- [ 5. 动态生成 config.json ] ---
 chattr -i /etc/xray2/config.json 2>/dev/null
 cat <<EOF > /etc/xray2/config.json
 {
@@ -104,19 +104,15 @@ cat <<EOF > /etc/xray2/config.json
         }]
 }
 EOF
-chmod 644 /etc/xray2/config.json
 
 # --- [ 6. 维护工具 x2 生成 ] ---
 cat <<EOF > /usr/bin/x2
 #!/bin/bash
-GREEN="\033[32m"
-YELLOW="\033[33m"
-PLAIN="\033[0m"
 case "\$1" in
     log) journalctl -u xray2 -f ;;
     update)
         wget -q -O /etc/xray2/sing_origin.json $RAW_BASE/sing_origin.json
-        systemctl restart xray2 && echo -e "\${GREEN}核心配置已同步并重启\${PLAIN}" ;;
+        systemctl restart xray2 && echo "配置已静默更新" ;;
     restart) systemctl restart xray2 && echo "重启成功" ;;
     stop) systemctl stop xray2 && echo "已停止" ;;
     start) systemctl start xray2 && echo "已启动" ;;
@@ -147,32 +143,36 @@ EOF
 
 systemctl daemon-reload && systemctl enable xray2 && systemctl restart xray2
 
-# --- [ 8. 状态检测与成功面板 ] ---
-sleep 2
+# --- [ 8. 智能检测与结果面板 ] ---
+echo -e "${YELLOW}正在检测节点运行状态，请稍候...${PLAIN}"
+sleep 3  # 给内核一点启动时间
+
+PID=$(ps -ef | grep xray2_core | grep -v grep | awk '{print $2}')
+
 clear
 echo -e "${GREEN}======================================================${PLAIN}"
-echo -e "✅ $BRAND_NAME 部署成功！       作者：${AUTHOR}"
+echo -e "✅ $BRAND_NAME 部署成功！"
 echo -e "${BLUE}------------------------------------------------------${PLAIN}"
-echo -e "  极昼官网: ${YELLOW}$AD_URL${PLAIN} | 频道: ${YELLOW}$AD_TG${PLAIN}"
-echo -e "  ${RED}$AD_MSG${PLAIN}"
+echo -e "  极昼官网: ${YELLOW}$AD_URL${PLAIN}"
+echo -e "  交流群组: ${YELLOW}$AD_TG_GROUP${PLAIN}"
+echo -e "  联系作者: ${YELLOW}$AUTHOR${PLAIN}"
 echo -e "${BLUE}------------------------------------------------------${PLAIN}"
 
-# 进程检测逻辑
-PID=\$(ps -ef | grep xray2_core | grep -v grep | awk '{print \$2}')
-if [ -z "\$PID" ]; then
-    echo -e "运行状态: ${RED}❌ 启动失败 (请检查域名证书是否正确)${PLAIN}"
+# 核心状态判定
+if [ -n "$PID" ]; then
+    echo -e "运行状态: ${GREEN}🚀 启动成功 [PID: $PID]${PLAIN}"
 else
-    echo -e "运行状态: ${GREEN}[ PID: \$PID ] 🚀 启动成功${PLAIN}"
+    echo -e "运行状态: ${RED}❌ 启动失败${PLAIN}"
+    echo -e "${YELLOW}原因分析: 请检查域名证书是否已放置在 /etc/xray2/ 目录下${PLAIN}"
 fi
 
-echo -e "当前协议: ${YELLOW}$NODE_TYPE${PLAIN} | 域名: ${YELLOW}$C_DOMAIN${PLAIN}"
+echo -e "当前协议: ${YELLOW}$NODE_TYPE${PLAIN} | 节点ID: ${YELLOW}$C_ID${PLAIN}"
 echo -e "------------------------------------------------------"
 echo -e "${YELLOW}管理指令：${PLAIN}"
 echo -e "  查看日志: ${GREEN}x2 log${PLAIN}"
-echo -e "  配置更新: ${GREEN}x2 update${PLAIN}"
 echo -e "  重启服务: ${GREEN}x2 restart${PLAIN}"
-echo -e "  停止服务: ${GREEN}x2 stop${PLAIN}"
-echo -e "  卸载脚本: ${GREEN}x2 uninstall${PLAIN}"
+echo -e "  静默升级: ${GREEN}x2 update${PLAIN}"
+echo -e "  卸载系统: ${GREEN}x2 uninstall${PLAIN}"
 echo -e "------------------------------------------------------"
-echo -e "请确保证书放在: ${BLUE}/etc/xray2/fullchain.cer${PLAIN} 和 ${BLUE}cert.key${PLAIN}"
+echo -e "证书路径: /etc/xray2/fullchain.cer 和 cert.key"
 echo -e "${GREEN}======================================================${PLAIN}"
