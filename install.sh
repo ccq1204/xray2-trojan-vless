@@ -1,13 +1,12 @@
 #!/bin/bash
 
-# --- [ 1. 品牌定义与广告配置 ] ---
+# --- [ 1. 品牌与广告配置 ] ---
 AUTHOR="极昼"
 BRAND_NAME="xray2-Multi"
-# 在这里定义新的广告信息
-AD_MESSAGE_1="本系统由【极昼】独家冠名赞助"
-AD_MESSAGE_2="商业合作请联系 Telegram: @jzllzf"
+AD_URL="0000.7788.gg"
+AD_TG="@jzllzf"
+AD_MSG="商业合作请联系 Telegram: $AD_TG"
 
-# 你的新仓库地址 (核心文件下载基础)
 RAW_BASE="https://raw.githubusercontent.com/ccq1204/xray2-trojan-vless/main"
 AUTH_DB="$RAW_BASE/auth_md5.txt"
 
@@ -17,21 +16,17 @@ YELLOW="\033[33m"
 BLUE="\033[34m"
 PLAIN="\033[0m"
 
-# --- [ 2. 授权验证 (界面增加广告显示) ] ---
+# --- [ 2. 授权验证 ] ---
 clear
 echo -e "${BLUE}======================================================${PLAIN}"
 echo -e "${GREEN}          $BRAND_NAME 商业版高性能转发系统${PLAIN}"
-echo -e "${YELLOW}                 作者：${AUTHOR}${PLAIN}"
-# === 增加广告显示 ===
-echo -e "${BLUE}------------------------------------------------------${PLAIN}"
-echo -e "${RED}⚠️  $AD_MESSAGE_1 ${PLAIN}"
-echo -e "${RED}⚠️  $AD_MESSAGE_2 ${PLAIN}"
+echo -e "          作者：${YELLOW}$AUTHOR${PLAIN}"
 echo -e "${BLUE}======================================================${PLAIN}"
+echo -e "  极昼官网: ${YELLOW}$AD_URL${PLAIN} | 频道: ${YELLOW}$AD_TG${PLAIN}"
+echo -e "  ${RED}$AD_MSG${PLAIN}"
+echo -e "${BLUE}------------------------------------------------------${PLAIN}"
 
-# 解决输入流冲突
 exec < /dev/tty
-
-# 预拉取授权列表
 AUTH_LIST=$(curl -H "Cache-Control: no-cache" -Lfs --connect-timeout 10 "${AUTH_DB}?v=${RANDOM}" | tr -cd '[:alnum:]')
 
 RETRY_COUNT=0
@@ -46,9 +41,9 @@ while [ $RETRY_COUNT -lt 3 ]; do
         [ $RETRY_COUNT -lt 3 ] && echo -e "${YELLOW}授权码错误，请重试...${PLAIN}"
     fi
 done
-[ "$VALID_AUTH" = false ] && { echo -e "${RED}❌ 授权失败。${PLAIN}"; exit 1; }
+[ "$VALID_AUTH" = false ] && { echo -e "${RED}❌ 授权失效。${PLAIN}"; exit 1; }
 
-# --- [ 3. 参数录入 (保持不变) ] ---
+# --- [ 3. 参数录入 ] ---
 echo -e "${BLUE}------------------------------------------------------${PLAIN}"
 read -p "选择协议 (1.Trojan 2.VLESS): " P_CHOICE
 [[ "$P_CHOICE" == "2" ]] && NODE_TYPE="vless" || NODE_TYPE="trojan"
@@ -61,18 +56,16 @@ read -p "面板密钥(ApiKey): " C_KEY
 read -p "节点ID(NodeID): " C_ID
 read -p "解析域名(CertDomain): " C_DOMAIN
 
-# --- [ 4. 环境准备与资源同步 (保持不变) ] ---
+# --- [ 4. 环境准备与资源同步 ] ---
 mkdir -p /etc/xray2
 mkdir -p /usr/local/xray2
-apt-get update -y && apt-get install -y curl wget tar unzip psmisc
+apt-get update -y && apt-get install -y curl wget tar unzip psmisc e2fsprogs
 
 echo -e "${YELLOW}正在同步全量配置文件与规则库...${PLAIN}"
-# 下载你仓库里那个“很重要”的文件 sing_origin.json
 wget -q -O /etc/xray2/sing_origin.json $RAW_BASE/sing_origin.json
 wget -q -O /etc/xray2/route.json $RAW_BASE/route.json
 wget -q -O /etc/xray2/dns.json $RAW_BASE/dns.json
 
-# 下载内核
 ARCH=$(uname -m)
 [ "$ARCH" == "x86_64" ] && D_URL="https://github.com/wyx2685/V2bX/releases/download/v0.4.0/V2bX-linux-64.zip" || D_URL="https://github.com/wyx2685/V2bX/releases/download/v0.4.0/V2bX-linux-arm64-v8a.zip"
 wget -q -O /usr/local/xray2/core.zip "$D_URL"
@@ -80,26 +73,15 @@ unzip -o /usr/local/xray2/core.zip -d /usr/local/xray2
 mv /usr/local/xray2/V2bX /usr/local/xray2/xray2_core
 chmod +x /usr/local/xray2/xray2_core
 
-# --- [ 5. 生成标准 config.json (保持不变) ] ---
-# 严格按照要求的结构对齐，引用仓库下载的 sing_origin.json
+# --- [ 5. 动态生成标准的 config.json ] ---
+# 强制解锁文件防止 Operation not permitted
+chattr -i /etc/xray2/config.json 2>/dev/null
 cat <<EOF > /etc/xray2/config.json
 {
-    "Log": {
-        "Level": "error",
-        "Output": ""
-    },
-    "Cores": [
-    {
+    "Log": { "Level": "error", "Output": "" },
+    "Cores": [{
         "Type": "sing",
-        "Log": {
-            "Level": "error",
-            "Timestamp": true
-        },
-        "NTP": {
-            "Enable": false,
-            "Server": "time.apple.com",
-            "ServerPort": 0
-        },
+        "Log": { "Level": "error", "Timestamp": true },
         "OriginalPath": "/etc/xray2/sing_origin.json"
     }],
     "Nodes": [{
@@ -122,12 +104,19 @@ cat <<EOF > /etc/xray2/config.json
         }]
 }
 EOF
+chmod 644 /etc/xray2/config.json
 
-# --- [ 6. 维护工具 x2 生成 (保持不变) ] ---
+# --- [ 6. 维护工具 x2 生成 ] ---
 cat <<EOF > /usr/bin/x2
 #!/bin/bash
+GREEN="\033[32m"
+YELLOW="\033[33m"
+PLAIN="\033[0m"
 case "\$1" in
     log) journalctl -u xray2 -f ;;
+    update)
+        wget -q -O /etc/xray2/sing_origin.json $RAW_BASE/sing_origin.json
+        systemctl restart xray2 && echo -e "\${GREEN}核心配置已同步并重启\${PLAIN}" ;;
     restart) systemctl restart xray2 && echo "重启成功" ;;
     stop) systemctl stop xray2 && echo "已停止" ;;
     start) systemctl start xray2 && echo "已启动" ;;
@@ -137,12 +126,12 @@ case "\$1" in
         systemctl disable xray2
         rm -rf /usr/local/xray2 /etc/xray2 /usr/bin/x2 /etc/systemd/system/xray2.service
         echo "已彻底卸载" ;;
-    *) echo "使用方法: x2 {log|restart|stop|start|status|uninstall}" ;;
+    *) echo "使用方法: x2 {log|update|restart|stop|start|status|uninstall}" ;;
 esac
 EOF
 chmod +x /usr/bin/x2
 
-# --- [ 7. 系统服务构建 (保持不变) ] ---
+# --- [ 7. 系统服务 ] ---
 cat <<EOF > /etc/systemd/system/xray2.service
 [Unit]
 Description=xray2 Service
@@ -158,17 +147,32 @@ EOF
 
 systemctl daemon-reload && systemctl enable xray2 && systemctl restart xray2
 
-# --- [ 8. 成功面板 (界面增加广告显示) ] ---
+# --- [ 8. 状态检测与成功面板 ] ---
+sleep 2
 clear
 echo -e "${GREEN}======================================================${PLAIN}"
 echo -e "✅ $BRAND_NAME 部署成功！       作者：${AUTHOR}"
-# === 增加广告显示 ===
 echo -e "${BLUE}------------------------------------------------------${PLAIN}"
-echo -e "${YELLOW}  $AD_MESSAGE_1 ${PLAIN}"
-echo -e "${YELLOW}  $AD_MESSAGE_2 ${PLAIN}"
+echo -e "  极昼官网: ${YELLOW}$AD_URL${PLAIN} | 频道: ${YELLOW}$AD_TG${PLAIN}"
+echo -e "  ${RED}$AD_MSG${PLAIN}"
 echo -e "${BLUE}------------------------------------------------------${PLAIN}"
-# === 增加广告显示 ===
-echo -e "协议: ${YELLOW}$NODE_TYPE${PLAIN} | 域名: ${YELLOW}$C_DOMAIN${PLAIN}"
-echo -e "管理指令: ${GREEN}x2 {log|restart|stop|start|status|uninstall}${PLAIN}"
-echo -e "请确保证书存放在: /etc/xray2/fullchain.cer 和 cert.key"
+
+# 进程检测逻辑
+PID=\$(ps -ef | grep xray2_core | grep -v grep | awk '{print \$2}')
+if [ -z "\$PID" ]; then
+    echo -e "运行状态: ${RED}❌ 启动失败 (请检查域名证书是否正确)${PLAIN}"
+else
+    echo -e "运行状态: ${GREEN}[ PID: \$PID ] 🚀 启动成功${PLAIN}"
+fi
+
+echo -e "当前协议: ${YELLOW}$NODE_TYPE${PLAIN} | 域名: ${YELLOW}$C_DOMAIN${PLAIN}"
+echo -e "------------------------------------------------------"
+echo -e "${YELLOW}管理指令：${PLAIN}"
+echo -e "  查看日志: ${GREEN}x2 log${PLAIN}"
+echo -e "  配置更新: ${GREEN}x2 update${PLAIN}"
+echo -e "  重启服务: ${GREEN}x2 restart${PLAIN}"
+echo -e "  停止服务: ${GREEN}x2 stop${PLAIN}"
+echo -e "  卸载脚本: ${GREEN}x2 uninstall${PLAIN}"
+echo -e "------------------------------------------------------"
+echo -e "请确保证书放在: ${BLUE}/etc/xray2/fullchain.cer${PLAIN} 和 ${BLUE}cert.key${PLAIN}"
 echo -e "${GREEN}======================================================${PLAIN}"
